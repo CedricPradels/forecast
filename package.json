@@ -2,7 +2,8 @@
   "private": true,
   "workspaces": [
     "server",
-    "client"
+    "client",
+    "types"
   ],
   "engines": {
     "yarn": ">=1.22.10",
@@ -14,6 +15,7 @@
   "author": "CedricPradels <cedric.pradels@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^14.14.27",
     "@typescript-eslint/eslint-plugin": "^4.15.0",
     "@typescript-eslint/parser": "^4.15.0",
     "eslint": "^7.12.1",
