@@ -1,0 +1,29 @@
+{
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "engines": {
+    "yarn": ">=1.22.10",
+    "node": ">=14.15.5"
+  },
+  "name": "forecast",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "CedricPradels <cedric.pradels@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.15.0",
+    "@typescript-eslint/parser": "^4.15.0",
+    "eslint": "^7.12.1",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-config-standard": "^16.0.2",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-react": "^7.22.0",
+    "prettier": "^2.2.1",
+    "typescript": "^4.1.5"
+  }
+}
