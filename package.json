@@ -6,8 +6,8 @@
     "types"
   ],
   "engines": {
-    "yarn": ">=1.22.10",
-    "node": ">=14.15.5"
+    "yarn": ">=1.22.0",
+    "node": ">=12.18.0"
   },
   "name": "forecast",
   "version": "1.0.0",
