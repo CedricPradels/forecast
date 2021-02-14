@@ -29,7 +29,7 @@
     "typescript": "^4.1.5"
   },
   "scripts": {
-    "build:server": "yarn workspace server build",
-    "build:client": "yarn workspace client build"
+    "build:server": "yarn workspace @forecast/server build",
+    "build:client": "yarn workspace @forecast/client build"
   }
 }
