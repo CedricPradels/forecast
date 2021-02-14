@@ -15,6 +15,7 @@
   },
   "scripts": {
     "dev": "nodemon",
-    "build": "echo todo"
+    "build": "tsc",
+    "start": "node dist"
   }
 }

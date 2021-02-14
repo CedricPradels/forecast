@@ -30,6 +30,7 @@
   },
   "scripts": {
     "build:server": "yarn workspace @forecast/server build",
-    "build:client": "yarn workspace @forecast/client build"
+    "build:client": "yarn workspace @forecast/client build",
+    "start:server": "yarn workspace @forecast/server start"
   }
 }
