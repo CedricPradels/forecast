@@ -2,8 +2,7 @@
   "private": true,
   "workspaces": [
     "server",
-    "client",
-    "types"
+    "client"
   ],
   "engines": {
     "yarn": ">=1.22.0",
