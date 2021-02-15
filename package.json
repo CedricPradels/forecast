@@ -18,6 +18,7 @@
     "@types/node": "^14.14.27",
     "@typescript-eslint/eslint-plugin": "^4.15.0",
     "@typescript-eslint/parser": "^4.15.0",
+    "concurrently": "^5.3.0",
     "eslint": "^7.12.1",
     "eslint-config-prettier": "^7.2.0",
     "eslint-config-standard": "^16.0.2",
@@ -31,6 +32,9 @@
   "scripts": {
     "build:server": "yarn workspace @forecast/server build",
     "build:client": "yarn workspace @forecast/client build",
-    "start:server": "yarn workspace @forecast/server start"
+    "start:server": "yarn workspace @forecast/server start",
+    "dev:server": "yarn workspace @forecast/server dev",
+    "dev:client": "yarn workspace @forecast/client dev",
+    "dev": "concurrently  \"yarn dev:server\" \"yarn dev:client\""
   }
 }
