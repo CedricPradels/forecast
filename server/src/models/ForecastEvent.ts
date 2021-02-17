@@ -72,7 +72,7 @@ const ConditionsSchema = new Schema<Document<Conditions>>({
 
 const ForecastEventSchema = new Schema<Document<ForecastEvent>>({
   conditions: { type: ConditionsSchema, required: true },
-  runners: { type: RunnerSchema, required: true },
+  runners: { type: [RunnerSchema], required: true },
   link: { type: String, required: true },
 });
 
