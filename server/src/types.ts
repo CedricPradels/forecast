@@ -1,6 +1,6 @@
 export type ForecastEvent = {
   conditions: Conditions;
-  Runners: Runner[];
+  runners: Runner[];
   link: string;
 };
 
@@ -31,7 +31,7 @@ export type Runner = {
     };
     bareShoe?: BareShoe;
     velocity: number; // temps / dernières courses / longueur
-    form: string;
+    form: string; // Musique
   };
 };
 
