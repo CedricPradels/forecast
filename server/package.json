@@ -8,6 +8,7 @@
     "apollo-server": "^2.21.0",
     "dotenv": "^8.2.0",
     "graphql": "^15.5.0",
+    "luxon": "^1.26.0",
     "mongoose": "5.11.15",
     "puppeteer": "^7.1.0"
   },
