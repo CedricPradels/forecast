@@ -1,3 +1,5 @@
+import { Schema } from 'mongoose';
+
 export type ForecastEvent = {
   conditions: Conditions;
   runners: Runner[];
@@ -5,7 +7,7 @@ export type ForecastEvent = {
 };
 
 export type Conditions = {
-  date: Date;
+  date: Schema.Types.Date;
   meeting: {
     name: string;
     number: string;

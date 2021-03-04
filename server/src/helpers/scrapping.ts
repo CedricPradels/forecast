@@ -1,4 +1,7 @@
 import puppeteer, { Browser, Page, WaitForOptions } from 'puppeteer';
+import { DateTime } from 'luxon';
+import { RaceType } from '../types/commons';
+import { ZeturfRaceType } from '../types/zeturf';
 
 export const openBrowser = async (): Promise<Browser> => {
   const browser = await puppeteer.launch();
@@ -14,8 +17,7 @@ export const newPage = async (browser: Browser): Promise<Page> => {
   return page;
 };
 
-export const goToUrl = async (
-  page: Page,
+export const goToUrl = (page: Page) => async (
   url: string,
   options: WaitForOptions = {}
 ): Promise<void> => {
@@ -23,3 +25,75 @@ export const goToUrl = async (
   const finalOptions = { ...defaultOptions, ...options };
   await page.goto(url, finalOptions);
 };
+
+export const getRaceType = async (zeturfRacePage: Page) => {
+  const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
+  console.log(isRaceAvailable);
+
+  const raceInfos = isRaceAvailable
+    ? await zeturfRacePage.evaluate(
+        () =>
+          document.querySelector(
+            '#infos-course > .content > .informations > .infos'
+          )?.textContent
+      )
+    : await zeturfRacePage.evaluate(
+        () => document.querySelector('#conditions > strong')?.textContent
+      );
+  if (!raceInfos) throw new Error('Wrong race type');
+
+  const parser: { [k in ZeturfRaceType]: RaceType } = {
+    'Cross-country': 'national hunt',
+    Attelé: 'harness',
+    Plat: 'flat',
+    Monté: 'saddle',
+    'Steeple-chase': 'steeplechase',
+    Haies: 'hurdling',
+  };
+
+  const type = raceInfos.split('- ')[0].trim();
+  if (!(type in parser)) throw new Error('Wrong race type');
+
+  return parser[type as ZeturfRaceType];
+};
+
+export const getIsRaceAvailable = async (zeturfRacePage: Page) => {
+  const getResult = await zeturfRacePage.evaluate(() =>
+    document.querySelector('#tab-arrivee')
+  );
+  return !getResult;
+};
+
+export const getRaces = async (date: Date) => {
+  const browser = await openBrowser();
+  const page = await newPage(browser);
+  const isoDate = DateTime.fromJSDate(date).toISODate();
+
+  const zeturfBase = 'https://www.zeturf.fr';
+
+  // GET RACES URLs
+  const url = `${zeturfBase}/fr/resultats-et-rapports/${isoDate}/turf`;
+  await goToUrl(page)(url);
+  const racesURL = (
+    await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll("div[id='frise-course'] ul > li > a"),
+        (anchor) => anchor.getAttribute('href')
+      )
+    )
+  ).map((anchor) => `${zeturfBase}${anchor}`);
+
+  // TODO: CASE ALREADY END
+  const racesTypes: RaceType[] = [];
+  for (const raceURL of racesURL) {
+    await goToUrl(page)(raceURL);
+    console.log(raceURL);
+    const raceType = await getRaceType(page);
+    console.log(raceType);
+    racesTypes.push(raceType);
+  }
+
+  return racesTypes;
+};
+
+getRaces(DateTime.now().toJSDate()).then(console.log);

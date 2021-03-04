@@ -14,6 +14,8 @@
   },
   "devDependencies": {
     "@types/agenda": "^3.0.2",
+    "@types/luxon": "^1.26.0",
+    "@types/mongodb": "^3.6.8",
     "@types/mongoose": "^5.10.3",
     "nodemon": "^2.0.7",
     "ts-node": "^9.1.1"

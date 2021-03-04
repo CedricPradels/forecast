@@ -1,20 +1,16 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, Types, Model } from 'mongoose';
 
-import {
-  BareShoe,
-  Conditions,
-  ForecastEvent,
-  RaceType,
-  Runner,
-} from '../types';
+import { BareShoe, Conditions, RaceType, Runner } from '../types/commons';
 
-const BareShoeSchema = new Schema<Document<BareShoe>>({
+export type DBBareShoe = BareShoe;
+const BareShoeSchema = new Schema({
   type: String,
   enum: ['rear', 'prior', 'all'],
   required: true,
 });
 
-const RaceTypeSchema = new Schema<Document<RaceType>>({
+export type DBRaceType = RaceType;
+const RaceTypeSchema = new Schema({
   type: String,
   required: true,
   enum: [
@@ -27,7 +23,8 @@ const RaceTypeSchema = new Schema<Document<RaceType>>({
   ],
 });
 
-const RunnerSchema = new Schema<Document<Runner>>({
+export type DBRunner = Runner;
+const RunnerSchema = new Schema({
   number: { type: String, required: true },
   horse: { type: String, required: true },
   isNonRunner: { type: Boolean, required: true },
@@ -50,7 +47,8 @@ const RunnerSchema = new Schema<Document<Runner>>({
   },
 });
 
-const ConditionsSchema = new Schema<Document<Conditions>>({
+export type DBConditions = Types.EmbeddedDocument & Conditions;
+const ConditionsSchema = new Schema({
   date: { type: Date, required: true },
   meeting: {
     required: true,
@@ -70,10 +68,19 @@ const ConditionsSchema = new Schema<Document<Conditions>>({
   purse: { type: Number, required: true },
 });
 
-const ForecastEventSchema = new Schema<Document<ForecastEvent>>({
+export type DBForecastEvent = Document & {
+  conditions: { date: Date } & Types.Subdocument;
+  runners: Types.Array<DBRunner>;
+  link: string;
+};
+
+const ForecastEventSchema = new Schema({
   conditions: { type: ConditionsSchema, required: true },
   runners: { type: [RunnerSchema], required: true },
   link: { type: String, required: true },
 });
 
-export const ForecastEventModel = model('ForecastEvent', ForecastEventSchema);
+export const ForecastEventModel = model<
+  DBForecastEvent,
+  Model<DBForecastEvent>
+>('ForecastEvent', ForecastEventSchema);
