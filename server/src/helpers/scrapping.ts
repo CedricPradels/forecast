@@ -17,6 +17,10 @@ export const newPage = async (browser: Browser): Promise<Page> => {
   return page;
 };
 
+export const closePage = async (page: Page) => {
+  await page.close();
+};
+
 export const goToUrl = (page: Page) => async (
   url: string,
   options: WaitForOptions = {}
@@ -26,20 +30,35 @@ export const goToUrl = (page: Page) => async (
   await page.goto(url, finalOptions);
 };
 
+export const getMeetingName = async (zeturfRacePage: Page) => {
+  const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
+  const selector: string = isRaceAvailable
+    ? '#infos-course .titre > .nom-course > span'
+    : '#arrivee-course .titre .nom-course > span';
+  const meetingName = await zeturfRacePage.evaluate(
+    (selector: string) => document.querySelector(selector)?.textContent,
+    selector
+  );
+  if (!meetingName) throw new Error('Wrong meeting name');
+
+  return meetingName.replace('-', '').trim().toLowerCase();
+};
+
+// export const getMeetingNumber = async (zeturfRacePage: Page) => {};
+// export const getRaceName = async (zeturfRacePage: Page) => {};
+// export const getRaceNumber = async (zeturfRacePage: Page) => {};
+
 export const getRaceType = async (zeturfRacePage: Page) => {
   const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
-  console.log(isRaceAvailable);
 
-  const raceInfos = isRaceAvailable
-    ? await zeturfRacePage.evaluate(
-        () =>
-          document.querySelector(
-            '#infos-course > .content > .informations > .infos'
-          )?.textContent
-      )
-    : await zeturfRacePage.evaluate(
-        () => document.querySelector('#conditions > strong')?.textContent
-      );
+  const selector: string = isRaceAvailable
+    ? '#infos-course > .content > .informations > .infos'
+    : '#conditions > strong';
+
+  const raceInfos = await zeturfRacePage.evaluate(
+    (selector: string) => document.querySelector(selector)?.textContent,
+    selector
+  );
   if (!raceInfos) throw new Error('Wrong race type');
 
   const parser: { [k in ZeturfRaceType]: RaceType } = {
@@ -88,11 +107,12 @@ export const getRaces = async (date: Date) => {
   for (const raceURL of racesURL) {
     await goToUrl(page)(raceURL);
     console.log(raceURL);
-    const raceType = await getRaceType(page);
-    console.log(raceType);
-    racesTypes.push(raceType);
+    const meetingName = await getMeetingName(page);
+    console.log(meetingName);
   }
 
+  closePage(page);
+  closeBrowser(browser);
   return racesTypes;
 };
 
