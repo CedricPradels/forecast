@@ -81,17 +81,20 @@ export const getMeetingNumber = async (zeturfRacePage: Page) => {
 };
 
 export const getRaceName = async (zeturfRacePage: Page) => {
-  const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
-  const selector: string = isRaceAvailable
-    ? '#infos-course .informations .nom-course'
-    : '#arriveeDetails .nom-course';
+  const selector: string = 'h1.course-infos-header-title';
+
   const meetingName = await zeturfRacePage.evaluate(
-    (selector: string) => document.querySelector(selector)?.textContent,
+    (selector: string) =>
+      document.querySelector(selector)?.getAttribute('title'),
     selector
   );
   if (!meetingName) throw new Error('Wrong meeting name');
 
-  return meetingName.trim().toLowerCase();
+  return meetingName
+    .split(' ')
+    .filter((word) => !!word)
+    .map((word) => word.toLowerCase())
+    .join(' ');
 };
 
 export const getRaceNumber = async (zeturfRacePage: Page) => {
@@ -164,7 +167,7 @@ export const getRacesFromDate = async (date: Date) => {
   for (const raceURL of racesURL) {
     await goToUrl(page)(raceURL);
     console.log(raceURL);
-    const meetingName = await getMeetingNumber(page);
+    const meetingName = await getRaceName(page);
     console.log(meetingName);
   }
 
