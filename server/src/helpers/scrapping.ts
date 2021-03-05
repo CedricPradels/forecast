@@ -1,7 +1,7 @@
 import puppeteer, { Browser, Page, WaitForOptions } from 'puppeteer';
 import { DateTime } from 'luxon';
 import { RaceType } from '../types/commons';
-import { ZeturfRaceType } from '../types/zeturf';
+import { PmuRaceType } from '../types/pmu';
 
 export const openBrowser = async (): Promise<Browser> => {
   const browser = await puppeteer.launch();
@@ -71,26 +71,26 @@ export const getMeetingNumber = async (zeturfRacePage: Page) => {
   const selector: string =
     '.bandeau-nav-content-scroll-item--current .reunion-numero > span:first-child';
 
-  const meetingName = await zeturfRacePage.evaluate(
+  const meetingNumber = await zeturfRacePage.evaluate(
     (selector: string) => document.querySelector(selector)?.textContent,
     selector
   );
-  if (!meetingName) throw new Error('Wrong meeting name');
+  if (!meetingNumber) throw new Error('Wrong meeting name');
 
-  return meetingName.replace('R', '').toLowerCase();
+  return meetingNumber.replace('R', '');
 };
 
 export const getRaceName = async (zeturfRacePage: Page) => {
   const selector: string = 'h1.course-infos-header-title';
 
-  const meetingName = await zeturfRacePage.evaluate(
+  const raceName = await zeturfRacePage.evaluate(
     (selector: string) =>
       document.querySelector(selector)?.getAttribute('title'),
     selector
   );
-  if (!meetingName) throw new Error('Wrong meeting name');
+  if (!raceName) throw new Error('Wrong meeting name');
 
-  return meetingName
+  return raceName
     .split(' ')
     .filter((word) => !!word)
     .map((word) => word.toLowerCase())
@@ -98,52 +98,40 @@ export const getRaceName = async (zeturfRacePage: Page) => {
 };
 
 export const getRaceNumber = async (zeturfRacePage: Page) => {
-  const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
-  const selector: string = isRaceAvailable
-    ? '#infos-course .titre > .numero-course'
-    : '#arrivee-course .titre .numero-course';
-  const meetingName = await zeturfRacePage.evaluate(
+  const selector: string =
+    '.bandeau-nav-content-scroll-item--current .course-numero > span';
+  const raceNumber = await zeturfRacePage.evaluate(
     (selector: string) => document.querySelector(selector)?.textContent,
     selector
   );
-  if (!meetingName) throw new Error('Wrong meeting name');
+  if (!raceNumber) throw new Error('Wrong meeting name');
 
-  return meetingName.replace('C', '').trim().toLowerCase();
+  return raceNumber.replace('C', '');
 };
 
 export const getRaceType = async (zeturfRacePage: Page) => {
-  const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
-
-  const selector: string = isRaceAvailable
-    ? '#infos-course > .content > .informations > .infos'
-    : '#conditions > strong';
+  const selector: string = 'ul.disciplines-list > li:first-child > span';
 
   const raceInfos = await zeturfRacePage.evaluate(
-    (selector: string) => document.querySelector(selector)?.textContent,
+    (selector: string) =>
+      document.querySelector(selector)?.getAttribute('title'),
     selector
   );
   if (!raceInfos) throw new Error('Wrong race type');
 
-  const parser: { [k in ZeturfRaceType]: RaceType } = {
-    'Cross-country': 'national hunt',
+  const parser: { [k in PmuRaceType]: RaceType } = {
+    'Cross Country': 'national hunt',
     Attelé: 'harness',
     Plat: 'flat',
     Monté: 'saddle',
-    'Steeple-chase': 'steeplechase',
+    'Steeple Chase': 'steeplechase',
     Haies: 'hurdling',
   };
 
   const type = raceInfos.split('- ')[0].trim();
   if (!(type in parser)) throw new Error('Wrong race type');
 
-  return parser[type as ZeturfRaceType];
-};
-
-export const getIsRaceAvailable = async (zeturfRacePage: Page) => {
-  const getResult = await zeturfRacePage.evaluate(() =>
-    document.querySelector('#tab-arrivee')
-  );
-  return !getResult;
+  return parser[type as PmuRaceType];
 };
 
 export const getRacesFromDate = async (date: Date) => {
@@ -153,6 +141,7 @@ export const getRacesFromDate = async (date: Date) => {
 
   // GET RACES URLs
   const pmuUrl = `https://www.pmu.fr/turf/${formatedDate}`;
+
   await goToUrl(page)(pmuUrl);
   const racesURL = (
     await page.evaluate(() =>
@@ -167,7 +156,7 @@ export const getRacesFromDate = async (date: Date) => {
   for (const raceURL of racesURL) {
     await goToUrl(page)(raceURL);
     console.log(raceURL);
-    const meetingName = await getRaceName(page);
+    const meetingName = await getRaceType(page);
     console.log(meetingName);
   }
 
@@ -176,4 +165,4 @@ export const getRacesFromDate = async (date: Date) => {
   return racesURL;
 };
 
-getRacesFromDate(DateTime.fromISO('2021-03-05').toJSDate()).then(console.log);
+getRacesFromDate(DateTime.fromISO('2021-03-04').toJSDate()).then(console.log);
