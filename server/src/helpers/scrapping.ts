@@ -25,23 +25,29 @@ export const goToUrl = (page: Page) => async (
   url: string,
   options: WaitForOptions = {}
 ): Promise<void> => {
-  const defaultOptions: WaitForOptions = { waitUntil: 'networkidle2' };
+  const defaultOptions: WaitForOptions = { waitUntil: 'networkidle0' };
   const finalOptions = { ...defaultOptions, ...options };
   await page.goto(url, finalOptions);
 };
 
 export const getMeetingName = async (zeturfRacePage: Page) => {
-  const isRaceAvailable = await getIsRaceAvailable(zeturfRacePage);
-  const selector: string = isRaceAvailable
-    ? '#infos-course .titre > .nom-course > span'
-    : '#arrivee-course .titre .nom-course > span';
+  const selector: string =
+    '.bandeau-nav-content-scroll-item--current .reunion-hippodrome > span';
   const meetingName = await zeturfRacePage.evaluate(
-    (selector: string) => document.querySelector(selector)?.textContent,
+    (selector: string) =>
+      document.querySelector(selector)?.getAttribute('title'),
     selector
   );
+
+  console.log(meetingName?.split(' '));
   if (!meetingName) throw new Error('Wrong meeting name');
 
-  return meetingName.replace('-', '').trim().toLowerCase();
+  return meetingName
+    .trim()
+    .toLowerCase()
+    .split(' ')
+    .filter((word) => !!word)
+    .join(' ');
 };
 
 export const getRacePurse = async (zeturfRacePage: Page) => {
@@ -139,37 +145,34 @@ export const getIsRaceAvailable = async (zeturfRacePage: Page) => {
   return !getResult;
 };
 
-export const getRaces = async (date: Date) => {
+export const getRacesFromDate = async (date: Date) => {
   const browser = await openBrowser();
   const page = await newPage(browser);
-  const isoDate = DateTime.fromJSDate(date).toISODate();
-
-  const zeturfBase = 'https://www.zeturf.fr';
+  const formatedDate = DateTime.fromJSDate(date).toFormat('ddLLyyyy');
 
   // GET RACES URLs
-  const url = `${zeturfBase}/fr/resultats-et-rapports/${isoDate}/turf`;
-  await goToUrl(page)(url);
+  const pmuUrl = `https://www.pmu.fr/turf/${formatedDate}`;
+  await goToUrl(page)(pmuUrl);
   const racesURL = (
     await page.evaluate(() =>
       Array.from(
-        document.querySelectorAll("div[id='frise-course'] ul > li > a"),
+        document.querySelectorAll('#timeline-view a.timeline-course-link'),
         (anchor) => anchor.getAttribute('href')
       )
     )
-  ).map((anchor) => `${zeturfBase}${anchor}`);
+  ).map((anchor) => `${pmuUrl}/${anchor?.split('/').slice(-2).join('/')}`);
 
   // TODO: CASE ALREADY END
-  const racesTypes: RaceType[] = [];
   for (const raceURL of racesURL) {
     await goToUrl(page)(raceURL);
     console.log(raceURL);
-    const meetingName = await getRacePurse(page);
+    const meetingName = await getMeetingName(page);
     console.log(meetingName);
   }
 
   closePage(page);
   closeBrowser(browser);
-  return racesTypes;
+  return racesURL;
 };
 
-getRaces(DateTime.now().toJSDate()).then(console.log);
+getRacesFromDate(DateTime.fromISO('2021-03-04').toJSDate()).then(console.log);
