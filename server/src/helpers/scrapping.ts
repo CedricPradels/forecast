@@ -155,6 +155,7 @@ const getRaceDate = async (pmuRacePage: Page) => {
 
   const [hour, minute] = raceTime[0].split('h').map((time) => Number(time));
 
+  // TODO: FIX WRONG DATE (ALWAYS TODAY)
   return DateTime.fromObject({ hour, minute, zone: 'Europe/Paris' }).toJSDate();
 };
 
@@ -232,6 +233,7 @@ export const getRunners = async (pmuRacePage: Page) => {
       const runner: any = {
         number: await getRunnerNumber(runnerRow),
         horse: await getRunnerHorseName(runnerRow),
+        isNonRunner: await getIsNonRunner(runnerRow),
       };
 
       return [...result, runner];
@@ -266,6 +268,17 @@ export const getRunnerHorseName = async (
   if (!horseName) throw new Error('Wrong runner number');
 
   return horseName.toLowerCase();
+};
+
+export const getIsNonRunner = async (pmuRunnerRow: ElementHandle<Element>) => {
+  const isNonRunnerRowClass = 'participants-tbody-tr--non-partant';
+  const horseName = await pmuRunnerRow.evaluate(
+    (node: Element, isNonRunnerRowClass: string) =>
+      node.classList.contains(isNonRunnerRowClass),
+    isNonRunnerRowClass
+  );
+
+  return horseName;
 };
 
 getRacesConditions(DateTime.fromISO('2021-03-04').toJSDate()).then(console.log);
