@@ -153,10 +153,25 @@ const getRaceDate = async (pmuRacePage: Page) => {
   const raceTime = /\d{2}h\d{2}/.exec(raceStatus);
   if (!raceTime) throw new Error('Wrong race type');
 
-  const [hour, minute] = raceTime[0].split('h').map((time) => Number(time));
+  const urlDate = /\d{8}/.exec(pmuRacePage.url());
+  if (!urlDate) throw new Error('Wrong url date');
 
+  const [day, month, year] = ([
+    [0, 2],
+    [2, 4],
+    [4, 8],
+  ] as const).map((range) => Number(urlDate[0].slice(...range)));
+
+  const [hour, minute] = raceTime[0].split('h').map((time) => Number(time));
   // TODO: FIX WRONG DATE (ALWAYS TODAY)
-  return DateTime.fromObject({ hour, minute, zone: 'Europe/Paris' }).toJSDate();
+  return DateTime.fromObject({
+    day,
+    month,
+    year,
+    hour,
+    minute,
+    zone: 'Europe/Paris',
+  }).toJSDate();
 };
 
 const getRaceConditions = async (pmuRacePage: Page): Promise<Conditions> => ({
