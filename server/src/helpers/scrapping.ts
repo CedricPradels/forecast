@@ -5,7 +5,7 @@ import puppeteer, {
   WaitForOptions,
 } from 'puppeteer';
 import { DateTime } from 'luxon';
-import { Conditions, RaceType, PmuRaceType, Runner } from '../types';
+import { Conditions, RaceType, PmuRaceType, Runner, BareShoe } from '../types';
 
 export const openBrowser = async (): Promise<Browser> => {
   const browser = await puppeteer.launch();
@@ -163,7 +163,7 @@ const getRaceDate = async (pmuRacePage: Page) => {
   ] as const).map((range) => Number(urlDate[0].slice(...range)));
 
   const [hour, minute] = raceTime[0].split('h').map((time) => Number(time));
-  // TODO: FIX WRONG DATE (ALWAYS TODAY)
+
   return DateTime.fromObject({
     day,
     month,
@@ -231,6 +231,38 @@ export const getRacesConditions = async (date: Date) => {
   return racesList;
 };
 
+export const getRunnerBareShoe = async (
+  pmuRunnerRow: ElementHandle<Element>
+): Promise<BareShoe> => {
+  const allSelector = '.deferre_anterieurs_posterieurs';
+  const rearSelector = '.deferre_anterieurs';
+  const priorSelector = '.deferre_posterieurs';
+
+  const isAll = !!(await pmuRunnerRow.evaluate(
+    (node: Element, selector: string) =>
+      node.querySelector(selector)?.textContent,
+    allSelector
+  ));
+
+  const isRear = !!(await pmuRunnerRow.evaluate(
+    (node: Element, selector: string) =>
+      node.querySelector(selector)?.textContent,
+    rearSelector
+  ));
+
+  const isPrior = !!(await pmuRunnerRow.evaluate(
+    (node: Element, selector: string) =>
+      node.querySelector(selector)?.textContent,
+    priorSelector
+  ));
+
+  if (isRear) return 'rear';
+  if (isPrior) return 'prior';
+  if (isAll) return 'all';
+
+  return null;
+};
+
 export const getRunners = async (pmuRacePage: Page) => {
   const runnerRows = await pmuRacePage.$$('.participants-table > tbody > tr');
   // const selector: string = '.participants-table > tbody > tr';
@@ -249,6 +281,7 @@ export const getRunners = async (pmuRacePage: Page) => {
         number: await getRunnerNumber(runnerRow),
         horse: await getRunnerHorseName(runnerRow),
         isNonRunner: await getIsNonRunner(runnerRow),
+        bareShoe: await getRunnerBareShoe(runnerRow),
       };
 
       return [...result, runner];

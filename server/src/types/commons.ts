@@ -25,17 +25,17 @@ export type Runner = {
   purse: {
     sum: number;
     average: number; // dotationTotale/nbrCourese
-    jokey: {
-      name: string;
-      isAlreadyRunWith: boolean;
-    };
-    bareShoe?: BareShoe;
-    velocity: number; // temps / dernières courses / longueur
-    form: string; // Musique
   };
+  jokey: {
+    name: string;
+    isAlreadyRunWith: boolean;
+  };
+  bareShoe: BareShoe;
+  velocity: number; // temps / dernières courses / longueur
+  form: string; // Musique
 };
 
-export type BareShoe = 'rear' | 'prior' | 'all';
+export type BareShoe = 'rear' | 'prior' | 'all' | null;
 
 export type RaceType =
   | 'harness'
