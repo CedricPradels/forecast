@@ -1,7 +1,11 @@
-import puppeteer, { Browser, Page, WaitForOptions } from 'puppeteer';
+import puppeteer, {
+  Browser,
+  ElementHandle,
+  Page,
+  WaitForOptions,
+} from 'puppeteer';
 import { DateTime } from 'luxon';
-import { RaceType } from '../types/commons';
-import { PmuRaceType } from '../types/pmu';
+import { Conditions, RaceType, PmuRaceType, Runner } from '../types';
 
 export const openBrowser = async (): Promise<Browser> => {
   const browser = await puppeteer.launch();
@@ -25,15 +29,17 @@ export const goToUrl = (page: Page) => async (
   url: string,
   options: WaitForOptions = {}
 ): Promise<void> => {
-  const defaultOptions: WaitForOptions = { waitUntil: 'networkidle0' };
+  const defaultOptions: WaitForOptions = {
+    waitUntil: 'networkidle0',
+  };
   const finalOptions = { ...defaultOptions, ...options };
   await page.goto(url, finalOptions);
 };
 
-export const getMeetingName = async (zeturfRacePage: Page) => {
+export const getMeetingName = async (pmuRacePage: Page) => {
   const selector: string =
     '.bandeau-nav-content-scroll-item--current .reunion-hippodrome > span';
-  const meetingName = await zeturfRacePage.evaluate(
+  const meetingName = await pmuRacePage.evaluate(
     (selector: string) =>
       document.querySelector(selector)?.getAttribute('title'),
     selector
@@ -48,15 +54,15 @@ export const getMeetingName = async (zeturfRacePage: Page) => {
     .join(' ');
 };
 
-export const getRacePurse = async (zeturfRacePage: Page) => {
+export const getRacePurse = async (pmuRacePage: Page) => {
   const selector: string =
     '.course-infos-header .course-infos-header-extras-main li:nth-child(2) > strong';
 
-  const raceInfos = await zeturfRacePage.evaluate(
+  const raceInfos = await pmuRacePage.evaluate(
     (selector: string) => document.querySelector(selector)?.textContent,
     selector
   );
-  console.log(raceInfos);
+
   if (!raceInfos) throw new Error('Wrong race purse');
 
   return Number(
@@ -67,11 +73,11 @@ export const getRacePurse = async (zeturfRacePage: Page) => {
   );
 };
 
-export const getMeetingNumber = async (zeturfRacePage: Page) => {
+export const getMeetingNumber = async (pmuRacePage: Page) => {
   const selector: string =
     '.bandeau-nav-content-scroll-item--current .reunion-numero > span:first-child';
 
-  const meetingNumber = await zeturfRacePage.evaluate(
+  const meetingNumber = await pmuRacePage.evaluate(
     (selector: string) => document.querySelector(selector)?.textContent,
     selector
   );
@@ -80,10 +86,10 @@ export const getMeetingNumber = async (zeturfRacePage: Page) => {
   return meetingNumber.replace('R', '');
 };
 
-export const getRaceName = async (zeturfRacePage: Page) => {
+export const getRaceName = async (pmuRacePage: Page) => {
   const selector: string = 'h1.course-infos-header-title';
 
-  const raceName = await zeturfRacePage.evaluate(
+  const raceName = await pmuRacePage.evaluate(
     (selector: string) =>
       document.querySelector(selector)?.getAttribute('title'),
     selector
@@ -97,10 +103,10 @@ export const getRaceName = async (zeturfRacePage: Page) => {
     .join(' ');
 };
 
-export const getRaceNumber = async (zeturfRacePage: Page) => {
+export const getRaceNumber = async (pmuRacePage: Page) => {
   const selector: string =
     '.bandeau-nav-content-scroll-item--current .course-numero > span';
-  const raceNumber = await zeturfRacePage.evaluate(
+  const raceNumber = await pmuRacePage.evaluate(
     (selector: string) => document.querySelector(selector)?.textContent,
     selector
   );
@@ -109,10 +115,10 @@ export const getRaceNumber = async (zeturfRacePage: Page) => {
   return raceNumber.replace('C', '');
 };
 
-export const getRaceType = async (zeturfRacePage: Page) => {
+export const getRaceType = async (pmuRacePage: Page) => {
   const selector: string = 'ul.disciplines-list > li:first-child > span';
 
-  const raceInfos = await zeturfRacePage.evaluate(
+  const raceInfos = await pmuRacePage.evaluate(
     (selector: string) =>
       document.querySelector(selector)?.getAttribute('title'),
     selector
@@ -134,7 +140,39 @@ export const getRaceType = async (zeturfRacePage: Page) => {
   return parser[type as PmuRaceType];
 };
 
-export const getRacesFromDate = async (date: Date) => {
+const getRaceDate = async (pmuRacePage: Page) => {
+  const selector: string =
+    '.bandeau-nav-content-scroll-item--current span.statut-course';
+
+  const raceStatus = await pmuRacePage.evaluate(
+    (selector: string) => document.querySelector(selector)?.textContent,
+    selector
+  );
+  if (!raceStatus) throw new Error('Wrong race type');
+
+  const raceTime = /\d{2}h\d{2}/.exec(raceStatus);
+  if (!raceTime) throw new Error('Wrong race type');
+
+  const [hour, minute] = raceTime[0].split('h').map((time) => Number(time));
+
+  return DateTime.fromObject({ hour, minute, zone: 'Europe/Paris' }).toJSDate();
+};
+
+const getRaceConditions = async (pmuRacePage: Page): Promise<Conditions> => ({
+  date: await getRaceDate(pmuRacePage),
+  meeting: {
+    name: await getMeetingName(pmuRacePage),
+    number: await getMeetingNumber(pmuRacePage),
+  },
+  race: {
+    name: await getRaceName(pmuRacePage),
+    number: await getRaceNumber(pmuRacePage),
+  },
+  type: await getRaceType(pmuRacePage),
+  purse: await getRacePurse(pmuRacePage),
+});
+
+export const getRacesConditions = async (date: Date) => {
   const browser = await openBrowser();
   const page = await newPage(browser);
   const formatedDate = DateTime.fromJSDate(date).toFormat('ddLLyyyy');
@@ -143,7 +181,7 @@ export const getRacesFromDate = async (date: Date) => {
   const pmuUrl = `https://www.pmu.fr/turf/${formatedDate}`;
 
   await goToUrl(page)(pmuUrl);
-  const racesURL = (
+  const racesUrl = (
     await page.evaluate(() =>
       Array.from(
         document.querySelectorAll('#timeline-view a.timeline-course-link'),
@@ -152,17 +190,82 @@ export const getRacesFromDate = async (date: Date) => {
     )
   ).map((anchor) => `${pmuUrl}/${anchor?.split('/').slice(-2).join('/')}`);
 
-  // TODO: CASE ALREADY END
-  for (const raceURL of racesURL) {
-    await goToUrl(page)(raceURL);
-    console.log(raceURL);
-    const meetingName = await getRaceType(page);
-    console.log(meetingName);
-  }
+  const racesList: {
+    conditions: Conditions;
+    runner: any;
+  }[] = await racesUrl.reduce(
+    async (acc, raceUrl) => {
+      const result = await acc;
+
+      await goToUrl(page)(raceUrl);
+      const conditions = {
+        conditions: await getRaceConditions(page),
+        runner: await getRunners(page),
+      };
+      console.log(conditions);
+      return [...result, conditions];
+    },
+    new Promise<{ conditions: Conditions; runner: any }[]>((resolve) =>
+      resolve([])
+    )
+  );
 
   closePage(page);
   closeBrowser(browser);
-  return racesURL;
+  return racesList;
 };
 
-getRacesFromDate(DateTime.fromISO('2021-03-04').toJSDate()).then(console.log);
+export const getRunners = async (pmuRacePage: Page) => {
+  const runnerRows = await pmuRacePage.$$('.participants-table > tbody > tr');
+  // const selector: string = '.participants-table > tbody > tr';
+
+  // const runnerRows = await pmuRacePage.evaluate(
+  //   (selector: string) =>
+  //     Array.from(document.querySelectorAll<HTMLTableRowElement>(selector)),
+  //   selector
+  // );
+
+  const runners = runnerRows.reduce(
+    async (acc, runnerRow) => {
+      const result = await acc;
+
+      const runner: any = {
+        number: await getRunnerNumber(runnerRow),
+        horse: await getRunnerHorseName(runnerRow),
+      };
+
+      return [...result, runner];
+    },
+    new Promise<Runner[]>((resolve) => resolve([]))
+  );
+  return runners;
+};
+
+export const getRunnerNumber = async (pmuRunnerRow: ElementHandle<Element>) => {
+  const selector = '.participants-num';
+
+  const runnerNumber = await pmuRunnerRow.evaluate(
+    (node: Element, selector: string) =>
+      node.querySelector(selector)?.textContent,
+    selector
+  );
+  if (!runnerNumber) throw new Error('Wrong runner number');
+
+  return runnerNumber;
+};
+
+export const getRunnerHorseName = async (
+  pmuRunnerRow: ElementHandle<Element>
+) => {
+  const selector = '.participants-name';
+  const horseName = await pmuRunnerRow.evaluate(
+    (node: Element, selector: string) =>
+      node.querySelector(selector)?.getAttribute('title'),
+    selector
+  );
+  if (!horseName) throw new Error('Wrong runner number');
+
+  return horseName.toLowerCase();
+};
+
+getRacesConditions(DateTime.fromISO('2021-03-04').toJSDate()).then(console.log);

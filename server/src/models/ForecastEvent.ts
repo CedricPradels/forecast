@@ -1,6 +1,6 @@
 import { Schema, model, Document, Types, Model } from 'mongoose';
 
-import { BareShoe, Conditions, RaceType, Runner } from '../types/commons';
+import { BareShoe, Conditions, RaceType, Runner } from '../types';
 
 export type DBBareShoe = BareShoe;
 const BareShoeSchema = new Schema({
