@@ -186,7 +186,22 @@ const getRaceConditions = async (pmuRacePage: Page): Promise<Conditions> => ({
   },
   type: await getRaceType(pmuRacePage),
   purse: await getRacePurse(pmuRacePage),
+  isQuintePlus: await getRaceIsQuintePlus(pmuRacePage),
 });
+
+export const getRaceIsQuintePlus = async (pmuRacePage: Page) => {
+  const selector: string =
+    '.bandeau-course-region .bandeau-nav-content-scroll-item--current .pari-picto';
+
+  const isQuintePlus =
+    (await pmuRacePage.evaluate(
+      (selector: string) =>
+        document.querySelector(selector)?.getAttribute('data-pari'),
+      selector
+    )) === 'E_QUINTE_PLUS';
+
+  return isQuintePlus;
+};
 
 export const getRacesConditions = async (date: Date) => {
   const browser = await openBrowser();
@@ -263,6 +278,19 @@ export const getRunnerBareShoe = async (
   return null;
 };
 
+export const getRunnerJokey = async (pmuRunnerRow: ElementHandle<Element>) => {
+  const selector = '.participants-jokey';
+
+  const runnerJokeyName = await pmuRunnerRow.evaluate(
+    (node: Element, selector: string) =>
+      node.querySelector(selector)?.getAttribute('title'),
+    selector
+  );
+  if (!runnerJokeyName) throw new Error('Wrong runner number');
+
+  return runnerJokeyName;
+};
+
 export const getRunners = async (pmuRacePage: Page) => {
   const runnerRows = await pmuRacePage.$$('.participants-table > tbody > tr');
   // const selector: string = '.participants-table > tbody > tr';
@@ -281,10 +309,16 @@ export const getRunners = async (pmuRacePage: Page) => {
         number: await getRunnerNumber(runnerRow),
         horse: await getRunnerHorseName(runnerRow),
         isNonRunner: await getIsNonRunner(runnerRow),
-        bareShoe: await getRunnerBareShoe(runnerRow),
       };
 
-      return [...result, runner];
+      if (runner.isNonRunner) return [...result, runner];
+
+      const isRunnerData: any = {
+        bareShoe: await getRunnerBareShoe(runnerRow),
+        jokeyName: await getRunnerJokey(runnerRow),
+      };
+
+      return [...result, { ...runner, ...isRunnerData }];
     },
     new Promise<Runner[]>((resolve) => resolve([]))
   );

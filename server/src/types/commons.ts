@@ -16,12 +16,11 @@ export type Conditions = {
   };
   type: RaceType; // plat trot
   purse: number; // de 15k à 40k
+  isQuintePlus: boolean;
 };
 
-export type Runner = {
-  number: string;
-  horse: string;
-  isNonRunner: boolean;
+type RunnerIsRunner = {
+  isNonRunner: false;
   purse: {
     sum: number;
     average: number; // dotationTotale/nbrCourese
@@ -34,6 +33,12 @@ export type Runner = {
   velocity: number; // temps / dernières courses / longueur
   form: string; // Musique
 };
+type RunnerIsNonRunner = { isnonRunner: true };
+
+export type Runner = {
+  number: string;
+  horse: string;
+} & (RunnerIsNonRunner | RunnerIsRunner);
 
 export type BareShoe = 'rear' | 'prior' | 'all' | null;
 
