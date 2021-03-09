@@ -5,7 +5,13 @@ import puppeteer, {
   WaitForOptions,
 } from 'puppeteer';
 import { DateTime } from 'luxon';
-import { Conditions, RaceType, PmuRaceType, Runner, BareShoe } from '../types';
+import {
+  Details,
+  Discipline,
+  PmuRaceType,
+  Participant,
+  Deferre,
+} from '../types';
 
 export const openBrowser = async (): Promise<Browser> => {
   const browser = await puppeteer.launch();
@@ -115,7 +121,7 @@ export const getRaceNumber = async (pmuRacePage: Page) => {
   return raceNumber.replace('C', '');
 };
 
-export const getRaceType = async (pmuRacePage: Page) => {
+export const getDiscipline = async (pmuRacePage: Page) => {
   const selector: string = 'ul.disciplines-list > li:first-child > span';
 
   const raceInfos = await pmuRacePage.evaluate(
@@ -125,19 +131,19 @@ export const getRaceType = async (pmuRacePage: Page) => {
   );
   if (!raceInfos) throw new Error('Wrong race type');
 
-  const parser: { [k in PmuRaceType]: RaceType } = {
-    'Cross Country': 'national hunt',
-    Attelé: 'harness',
-    Plat: 'flat',
-    Monté: 'saddle',
-    'Steeple Chase': 'steeplechase',
-    Haies: 'hurdling',
+  const parser: { [k in PmuRaceType]: Discipline } = {
+    Attelé: 'attele',
+    Plat: 'plat',
+    Monté: 'monte',
+    'Steeple Chase': 'steeple-chase',
+    Haies: 'haies',
+    'Cross Country': 'cross-country',
   };
 
-  const type = raceInfos.split('- ')[0].trim();
-  if (!(type in parser)) throw new Error('Wrong race type');
+  const discipline = raceInfos.split('- ')[0].trim();
+  if (!(discipline in parser)) throw new Error('Wrong race type');
 
-  return parser[type as PmuRaceType];
+  return parser[discipline as PmuRaceType];
 };
 
 const getRaceDate = async (pmuRacePage: Page) => {
@@ -174,7 +180,48 @@ const getRaceDate = async (pmuRacePage: Page) => {
   }).toJSDate();
 };
 
-const getRaceConditions = async (pmuRacePage: Page): Promise<Conditions> => ({
+const getCourseDistance = async (pmuRacePage: Page) => {
+  const selector: string =
+    'ul.course-infos-header-extras-main > li:nth-child(3)';
+
+  const raceInfos = await pmuRacePage.evaluate(
+    (selector: string) => document.querySelector(selector)?.textContent,
+    selector
+  );
+  if (!raceInfos) throw new Error('Wrong race distance');
+
+  return Number(raceInfos.replace('m', '').trim());
+};
+
+export const getCourseGains = async (pmuRacePage: Page) => {
+  const selector: string = 'p.details-conditions-tooltip-content-texte';
+
+  const raceInfos = await pmuRacePage.evaluate(
+    (selector: string) => document.querySelector(selector)?.textContent,
+    selector
+  );
+  if (!raceInfos) throw new Error('Wrong race gain');
+
+  const parseRange = (range: RegExp[]) =>
+    range
+      .map((regex) => regex.exec(raceInfos.replace(/\./g, '')))
+      .filter((str): str is RegExpExecArray => !!str)
+      .map((tab) => Number(tab[1]));
+  const either = <T, U>(f: (a: T[]) => U[]) => (x: T[]) => {
+    const result = f(x);
+    return result.length > 0 ? f(x) : null;
+  };
+
+  const min = either(parseRange)([/ayant gagné au moins (\d+)/]);
+  const max = either(parseRange)([/mais pas (\d+)/, /n'ayant pas gagné (\d+)/]);
+
+  if (min && !max) return { min: min[0] };
+  if (!min && max) return { max: max[0] };
+  if (min && max) return { min: min[0], max: max[0] };
+  return null;
+};
+
+const getCourseDetails = async (pmuRacePage: Page): Promise<Details> => ({
   date: await getRaceDate(pmuRacePage),
   meeting: {
     name: await getMeetingName(pmuRacePage),
@@ -184,9 +231,11 @@ const getRaceConditions = async (pmuRacePage: Page): Promise<Conditions> => ({
     name: await getRaceName(pmuRacePage),
     number: await getRaceNumber(pmuRacePage),
   },
-  type: await getRaceType(pmuRacePage),
+  type: await getDiscipline(pmuRacePage),
   purse: await getRacePurse(pmuRacePage),
   isQuintePlus: await getRaceIsQuintePlus(pmuRacePage),
+  distance: await getCourseDistance(pmuRacePage),
+  conditions: { gains: await getCourseGains(pmuRacePage) },
 });
 
 export const getRaceIsQuintePlus = async (pmuRacePage: Page) => {
@@ -222,7 +271,7 @@ export const getRacesConditions = async (date: Date) => {
   ).map((anchor) => `${pmuUrl}/${anchor?.split('/').slice(-2).join('/')}`);
 
   const racesList: {
-    conditions: Conditions;
+    conditions: Details;
     runner: any;
   }[] = await racesUrl.reduce(
     async (acc, raceUrl) => {
@@ -230,13 +279,13 @@ export const getRacesConditions = async (date: Date) => {
 
       await goToUrl(page)(raceUrl);
       const conditions = {
-        conditions: await getRaceConditions(page),
+        conditions: await getCourseDetails(page),
         runner: await getRunners(page),
       };
       console.log(conditions);
       return [...result, conditions];
     },
-    new Promise<{ conditions: Conditions; runner: any }[]>((resolve) =>
+    new Promise<{ conditions: Details; runner: any }[]>((resolve) =>
       resolve([])
     )
   );
@@ -246,34 +295,34 @@ export const getRacesConditions = async (date: Date) => {
   return racesList;
 };
 
-export const getRunnerBareShoe = async (
+export const getPartantDeferre = async (
   pmuRunnerRow: ElementHandle<Element>
-): Promise<BareShoe> => {
+): Promise<Deferre> => {
   const allSelector = '.deferre_anterieurs_posterieurs';
   const rearSelector = '.deferre_anterieurs';
   const priorSelector = '.deferre_posterieurs';
 
-  const isAll = !!(await pmuRunnerRow.evaluate(
+  const isD4 = !!(await pmuRunnerRow.evaluate(
     (node: Element, selector: string) =>
       node.querySelector(selector)?.textContent,
     allSelector
   ));
 
-  const isRear = !!(await pmuRunnerRow.evaluate(
+  const isDP = !!(await pmuRunnerRow.evaluate(
     (node: Element, selector: string) =>
       node.querySelector(selector)?.textContent,
     rearSelector
   ));
 
-  const isPrior = !!(await pmuRunnerRow.evaluate(
+  const isDA = !!(await pmuRunnerRow.evaluate(
     (node: Element, selector: string) =>
       node.querySelector(selector)?.textContent,
     priorSelector
   ));
 
-  if (isRear) return 'rear';
-  if (isPrior) return 'prior';
-  if (isAll) return 'all';
+  if (isDP) return 'DP';
+  if (isDA) return 'DA';
+  if (isD4) return 'D4';
 
   return null;
 };
@@ -286,7 +335,7 @@ export const getRunnerJokey = async (pmuRunnerRow: ElementHandle<Element>) => {
       node.querySelector(selector)?.getAttribute('title'),
     selector
   );
-  if (!runnerJokeyName) throw new Error('Wrong runner number');
+  if (!runnerJokeyName) throw new Error('Wrong runner jockey');
 
   return runnerJokeyName;
 };
@@ -308,19 +357,19 @@ export const getRunners = async (pmuRacePage: Page) => {
       const runner: any = {
         number: await getRunnerNumber(runnerRow),
         horse: await getRunnerHorseName(runnerRow),
-        isNonRunner: await getIsNonRunner(runnerRow),
+        isNonPartant: await getIsNonPartant(runnerRow),
       };
 
-      if (runner.isNonRunner) return [...result, runner];
+      if (runner.isNonPartant) return [...result, runner];
 
       const isRunnerData: any = {
-        bareShoe: await getRunnerBareShoe(runnerRow),
+        bareShoe: await getPartantDeferre(runnerRow),
         jokeyName: await getRunnerJokey(runnerRow),
       };
 
       return [...result, { ...runner, ...isRunnerData }];
     },
-    new Promise<Runner[]>((resolve) => resolve([]))
+    new Promise<Participant[]>((resolve) => resolve([]))
   );
   return runners;
 };
@@ -347,12 +396,12 @@ export const getRunnerHorseName = async (
       node.querySelector(selector)?.getAttribute('title'),
     selector
   );
-  if (!horseName) throw new Error('Wrong runner number');
+  if (!horseName) throw new Error('Wrong runner name');
 
   return horseName.toLowerCase();
 };
 
-export const getIsNonRunner = async (pmuRunnerRow: ElementHandle<Element>) => {
+export const getIsNonPartant = async (pmuRunnerRow: ElementHandle<Element>) => {
   const isNonRunnerRowClass = 'participants-tbody-tr--non-partant';
   const horseName = await pmuRunnerRow.evaluate(
     (node: Element, isNonRunnerRowClass: string) =>

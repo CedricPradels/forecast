@@ -1,15 +1,15 @@
 import { Schema, model, Document, Types, Model } from 'mongoose';
 
-import { BareShoe, Conditions, RaceType, Runner } from '../types';
+import { Deferre, Details, Discipline, Participant } from '../types';
 
-export type DBBareShoe = BareShoe;
+export type DBBareShoe = Deferre;
 const BareShoeSchema = new Schema({
   type: String,
-  enum: ['rear', 'prior', 'all'],
+  enum: ['DP', 'DA', 'D4'],
   required: true,
 });
 
-export type DBRaceType = RaceType;
+export type DBRaceType = Discipline;
 const RaceTypeSchema = new Schema({
   type: String,
   required: true,
@@ -23,7 +23,7 @@ const RaceTypeSchema = new Schema({
   ],
 });
 
-export type DBRunner = Runner;
+export type DBRunner = Participant;
 const RunnerSchema = new Schema({
   number: { type: String, required: true },
   horse: { type: String, required: true },
@@ -47,7 +47,7 @@ const RunnerSchema = new Schema({
   },
 });
 
-export type DBConditions = Types.EmbeddedDocument & Conditions;
+export type DBConditions = Types.EmbeddedDocument & Details;
 const ConditionsSchema = new Schema({
   date: { type: Date, required: true },
   meeting: {
