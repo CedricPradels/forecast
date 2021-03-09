@@ -1,7 +1,41 @@
+import { Agent } from 'http';
+import { SafeExtract } from './mappedTypes';
+
 export type ForecastEvent = {
   conditions: Details;
   runners: Participant[];
   link: string;
+};
+
+type PisteType =
+  | 'herbe'
+  | 'sable fibre'
+  | 'cendre'
+  | 'sable'
+  | 'pouzzolane'
+  | 'machefer'
+  | 'gazon';
+
+type Piste = {
+  type: PisteType;
+  etat: number;
+};
+
+export type CourseGalop = {
+  type: SafeExtract<Discipline, 'plat'>;
+  distance: number;
+  conditions: ConditionsPlat;
+  terrain: Piste;
+};
+
+export type CourseTrot = {
+  type: SafeExtract<Discipline, 'attele'>;
+  distance: number;
+  conditions: ConditionsAttele;
+};
+
+export type CourseOther = {
+  type: SafeExtract<Discipline, 'attele' | 'plat'>;
 };
 
 export type Details = {
@@ -17,16 +51,24 @@ export type Details = {
   type: Discipline; // plat trot
   purse: number; // de 15k à 40k
   isQuintePlus: boolean;
-  distance: number;
-  conditions: Conditions;
-};
+} & (CourseGalop | CourseTrot);
 
 type ParticipantIsNonPartant = { isNonPartant: true };
 type ParticipantIsPartant = { isNonPartant: false };
 
 type Driver = {
   name: string;
-  isAlreadyRunWith: boolean;
+  isCrackDriver: boolean;
+  performance: {
+    hippodrome: string;
+    date: Date;
+    distance: number;
+    horse: string;
+  }[];
+};
+
+type Jockey = {
+  name: string;
   isCrackDriver: boolean;
   performance: {
     hippodrome: string;
@@ -67,9 +109,16 @@ type Place = 'disqualifie' | 'arrete' | 'tombe' | number;
 
 type Galoppeur = {
   discipline: 'galop';
-  jokey: {
-    name: string;
-    isAlreadyRunWith: boolean;
+  jokey: Jockey;
+  poids: number;
+  historique: {
+    date: Date;
+    distance: number;
+    piste: Piste;
+    place: Place;
+    poids: number;
+    jockey: Jockey;
+    conditions: Pick<ConditionsPlat, 'categorie'>;
   };
 } & ParticipantIsPartant;
 
@@ -88,12 +137,12 @@ export type Discipline =
   | 'monte'
   | 'cross-country';
 
-export type Conditions = {
-  gains: Gains;
+export type ConditionsPlat = {
+  age: Record<'min' | 'max', number>;
+  categorie: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
 };
 
-type Gains =
-  | Record<'min' | 'max', number>
-  | Record<'min', number>
-  | Record<'max', number>
-  | null;
+export type ConditionsAttele = {
+  gains: Record<'min' | 'max', number>;
+  age: Record<'min' | 'max', number>;
+};
