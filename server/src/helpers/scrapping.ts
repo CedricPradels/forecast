@@ -11,6 +11,9 @@ import {
   PmuRaceType,
   Participant,
   Deferre,
+  CourseCommons,
+  CourseTrot,
+  CourseGalop,
 } from '../types';
 
 export const openBrowser = async (): Promise<Browser> => {
@@ -193,6 +196,27 @@ const getCourseDistance = async (pmuRacePage: Page) => {
   return Number(raceInfos.replace('m', '').trim());
 };
 
+export const getCourseAge = async (pmuRacePage: Page) => {
+  const selector: string = 'p.details-conditions-tooltip-content-texte';
+
+  const raceInfos = await pmuRacePage.evaluate(
+    (selector: string) => document.querySelector(selector)?.textContent,
+    selector
+  );
+  if (!raceInfos) throw new Error('Wrong race age');
+  const ageStr = /Pour .+? ans/.exec(raceInfos);
+
+  if (!ageStr) throw new Error('No race string available');
+
+  const ages = ageStr[0]
+    .split(' ')
+    .map((word) => word.replace(',', ''))
+    .map((word) => Number(word))
+    .filter((number) => Number.isInteger(number));
+
+  return { min: Math.min(...ages), max: Math.max(...ages) };
+};
+
 export const getCourseGains = async (pmuRacePage: Page) => {
   const selector: string = 'p.details-conditions-tooltip-content-texte';
 
@@ -218,25 +242,49 @@ export const getCourseGains = async (pmuRacePage: Page) => {
   if (min && !max) return { min: min[0] };
   if (!min && max) return { max: max[0] };
   if (min && max) return { min: min[0], max: max[0] };
-  return null;
+
+  throw new Error('Wrong race gain');
 };
 
-const getCourseDetails = async (pmuRacePage: Page): Promise<Details> => ({
-  date: await getRaceDate(pmuRacePage),
-  meeting: {
-    name: await getMeetingName(pmuRacePage),
-    number: await getMeetingNumber(pmuRacePage),
-  },
-  race: {
-    name: await getRaceName(pmuRacePage),
-    number: await getRaceNumber(pmuRacePage),
-  },
-  type: await getDiscipline(pmuRacePage),
-  purse: await getRacePurse(pmuRacePage),
-  isQuintePlus: await getRaceIsQuintePlus(pmuRacePage),
-  distance: await getCourseDistance(pmuRacePage),
-  conditions: { gains: await getCourseGains(pmuRacePage) },
-});
+const getCourseDetails = async (pmuRacePage: Page): Promise<Details> => {
+  const discipline: Discipline = await getDiscipline(pmuRacePage);
+
+  const commons: CourseCommons = {
+    date: await getRaceDate(pmuRacePage),
+    meeting: {
+      name: await getMeetingName(pmuRacePage),
+      number: await getMeetingNumber(pmuRacePage),
+    },
+    race: {
+      name: await getRaceName(pmuRacePage),
+      number: await getRaceNumber(pmuRacePage),
+    },
+    purse: await getRacePurse(pmuRacePage),
+    isQuintePlus: await getRaceIsQuintePlus(pmuRacePage),
+  };
+
+  if (discipline === 'attele') {
+    const attele: CourseTrot = {
+      discipline,
+      distance: await getCourseDistance(pmuRacePage),
+      conditions: {
+        gains: await getCourseGains(pmuRacePage),
+        age: await getCourseAge(pmuRacePage),
+      },
+    };
+    return { ...commons, ...attele };
+  }
+
+  if (discipline === 'plat') {
+    const plat: CourseGalop = {
+      discipline,
+      distance: await getCourseDistance(pmuRacePage),
+    };
+    return { ...commons, ...plat };
+  }
+
+  return { ...commons, discipline };
+};
 
 export const getRaceIsQuintePlus = async (pmuRacePage: Page) => {
   const selector: string =

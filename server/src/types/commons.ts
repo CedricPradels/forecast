@@ -1,5 +1,4 @@
-import { Agent } from 'http';
-import { SafeExtract } from './mappedTypes';
+import { SafeExclude, SafeExtract } from './mappedTypes';
 
 export type ForecastEvent = {
   conditions: Details;
@@ -22,23 +21,23 @@ type Piste = {
 };
 
 export type CourseGalop = {
-  type: SafeExtract<Discipline, 'plat'>;
+  discipline: SafeExtract<Discipline, 'plat'>;
   distance: number;
-  conditions: ConditionsPlat;
-  terrain: Piste;
+  // conditions: ConditionsPlat;
+  // terrain: Piste;
 };
 
 export type CourseTrot = {
-  type: SafeExtract<Discipline, 'attele'>;
+  discipline: SafeExtract<Discipline, 'attele'>;
   distance: number;
   conditions: ConditionsAttele;
 };
 
 export type CourseOther = {
-  type: SafeExtract<Discipline, 'attele' | 'plat'>;
+  discipline: SafeExclude<Discipline, 'attele' | 'plat'>;
 };
 
-export type Details = {
+export type CourseCommons = {
   date: Date;
   meeting: {
     name: string;
@@ -48,10 +47,11 @@ export type Details = {
     name: string;
     number: string;
   };
-  type: Discipline; // plat trot
   purse: number; // de 15k à 40k
   isQuintePlus: boolean;
-} & (CourseGalop | CourseTrot);
+};
+
+export type Details = CourseCommons & (CourseGalop | CourseTrot | CourseOther);
 
 type ParticipantIsNonPartant = { isNonPartant: true };
 type ParticipantIsPartant = { isNonPartant: false };
@@ -143,6 +143,6 @@ export type ConditionsPlat = {
 };
 
 export type ConditionsAttele = {
-  gains: Record<'min' | 'max', number>;
+  gains: Partial<Record<'min' | 'max', number>>;
   age: Record<'min' | 'max', number>;
 };
